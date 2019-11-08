@@ -16,10 +16,11 @@ const {
     View,
     ImageBackground,
     ActivityIndicator,
-    NetInfo,
+    // NetInfo,
     Platform,
     StyleSheet,
 } = ReactNative;
+import NetInfo from "@react-native-community/netinfo";
 
 const styles = StyleSheet.create({
     image: {
@@ -42,7 +43,7 @@ function getImageProps(props) {
 const CACHED_IMAGE_REF = 'cachedImage';
 
 class CachedImage extends React.Component {
-
+    unsubscribeNetInfo = null;
     static propTypes = {
         renderImage: PropTypes.func.isRequired,
         activityIndicatorProps: PropTypes.object.isRequired,
@@ -52,8 +53,8 @@ class CachedImage extends React.Component {
     };
 
     static defaultProps = {
-            renderImage: props => (<ImageBackground imageStyle={props.style} ref={CACHED_IMAGE_REF} {...props} />),
-            activityIndicatorProps: {},
+        renderImage: props => (<ImageBackground imageStyle={props.style} ref={CACHED_IMAGE_REF} {...props} />),
+        activityIndicatorProps: {},
     };
 
     static contextTypes = {
@@ -79,21 +80,31 @@ class CachedImage extends React.Component {
 
     componentWillMount() {
         this._isMounted = true;
-        NetInfo.isConnected.addEventListener('connectionChange', this.handleConnectivityChange);
+        /*NetInfo.isConnected.addEventListener('connectionChange', this.handleConnectivityChange);*/
+        this.unsubscribeNetInfo = NetInfo.addEventListener(state => {
+            this.handleConnectivityChange(state.isConnected)
+        });
         // initial
-        NetInfo.isConnected.fetch()
+        /*NetInfo.isConnected.fetch()
             .then(isConnected => {
                 this.safeSetState({
                     networkAvailable: isConnected
                 });
+            });*/
+        NetInfo.fetch().then(state => {
+            this.safeSetState({
+                networkAvailable: state.isConnected
             });
-
+        });
         this.processSource(this.props.source);
     }
 
     componentWillUnmount() {
         this._isMounted = false;
-        NetInfo.isConnected.removeEventListener('connectionChange', this.handleConnectivityChange);
+        /*NetInfo.isConnected.removeEventListener('connectionChange', this.handleConnectivityChange);*/
+        if(this.unsubscribeNetInfo !== null){
+            this.unsubscribeNetInfo();
+        }
     }
 
     componentWillReceiveProps(nextProps) {
@@ -218,11 +229,11 @@ class CachedImage extends React.Component {
             children: (
                 LoadingIndicator
                     ? <View style={[imageStyle, activityIndicatorStyle]}>
-                    <LoadingIndicator {...activityIndicatorProps} />
-                </View>
+                        <LoadingIndicator {...activityIndicatorProps} />
+                    </View>
                     : <ActivityIndicator
-                    {...activityIndicatorProps}
-                    style={activityIndicatorStyle}/>
+                        {...activityIndicatorProps}
+                        style={activityIndicatorStyle}/>
             )
         });
     }
